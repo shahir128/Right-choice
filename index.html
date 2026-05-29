@@ -448,7 +448,7 @@
             else {
                 let msg = `*Right Choice* 🛍️\n--------------------------\n*Bill No:* ${newBill.id}\n*Date:* ${newBill.date}\n*Customer:* ${newBill.customer}\n\n*Your Items:*\n`;
                 newBill.items.forEach(i => {
-                    msg += `👗 ${i.name} (${i.qty}) = ${formatINR(i.total)}\n`;
+                    msg += ` ${i.name} (${i.qty}) = ${formatINR(i.total)}\n`;
                     if(i.discount > 0) msg += `   ~MRP: ${formatINR(i.mrp)} each~\n`; 
                 });
                 if (newBill.discount > 0) msg += `\nSubtotal: ${formatINR(newBill.subtotal)}\nTotal Savings: -${formatINR(newBill.discount)}\n`;
