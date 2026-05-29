@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Right Choice - Modern Billing</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* Modern CSS Variables based on Tailwind */
+        :root {
+            --bg-color: #FAFAFA; --surface: #FFFFFF; --surface-hover: #F9FAFB;
+            --border: #E5E7EB; --text-main: #111827; --text-muted: #6B7280;
+            --primary: #2563EB; --danger-text: #EF4444; --danger-bg: #FEF2F2;
+            --success-text: #16A34A; --success-bg: #F0FDF4;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding-bottom: 80px; -webkit-font-smoothing: antialiased; }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+
+        /* Typography */
+        h1 { font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        h2 { font-size: 1.5rem; font-weight: 600; }
+        h3 { font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+        .text-sm { font-size: 0.875rem; color: var(--text-muted); }
+        .text-xs { font-size: 0.75rem; color: var(--text-muted); }
+        .font-medium { font-weight: 500; } .font-semibold { font-weight: 600; }
+
+        /* Layout & Cards */
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-bottom: 24px; overflow: hidden; }
+        .card-body { padding: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(1, 1fr); gap: 12px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(1, 1fr); gap: 12px; }
+        @media (min-width: 768px) { 
+            .grid-3 { grid-template-columns: repeat(3, 1fr); gap: 16px; } 
+            .grid-2 { grid-template-columns: repeat(2, 1fr); gap: 16px; } 
+            h1 { font-size: 1.5rem; }
+            .container { padding: 20px; }
+            .card-body { padding: 24px; }
+        }
+
+        /* Stats Blocks */
+        .stat-block { background: var(--surface-hover); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+
+        /* Tabs */
+        .tabs { display: flex; overflow-x: auto; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 24px; padding-bottom: 1px; }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab-btn { background: transparent; border: 1px solid transparent; border-bottom: none; padding: 12px 16px; border-radius: 8px 8px 0 0; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 0.875rem; color: var(--text-muted); transition: 0.2s; white-space: nowrap; }
+        .tab-btn:hover { background: var(--surface-hover); color: var(--text-main); }
+        .tab-btn.active { background: var(--surface); border-color: var(--border); color: var(--primary); box-shadow: 0 1px 0 var(--surface); position: relative; top: 1px; }
+
+        /* Forms & Inputs */
+        label { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+        input, select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; transition: border-color 0.2s; outline: none; background: var(--surface); }
+        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        input[readonly] { background-color: var(--surface-hover); cursor: not-allowed; color: var(--text-main); font-weight: 600; border-color: transparent; }
+
+        /* Buttons */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: 0.2s; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); }
+        .btn:hover { background: var(--surface-hover); }
+        .btn-full { width: 100%; }
+        .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+        .btn-primary:hover { background: #1D4ED8; }
+        .btn-icon { padding: 8px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-icon:hover { background: var(--danger-bg); color: var(--danger-text); }
+
+        /* Dynamic Items Table - Mobile First Responsive */
+        .items-header { display: none; }
+        .item-row { display: flex; flex-direction: column; gap: 10px; background: var(--surface-hover); padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--border); }
+        .item-row > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .item-row label.md-hidden { display: block; width: 40%; font-size: 0.8rem; margin: 0; }
+        .item-row input { width: 60%; text-align: right; }
+        
+        @media (min-width: 768px) { 
+            .items-header { display: grid; grid-template-columns: 3fr 1.5fr 1.5fr 1.5fr 1fr 1.5fr auto; gap: 12px; padding: 0 4px 8px 4px; }
+            .item-row { display: grid; grid-template-columns: 3fr 1.5fr 1.5fr 1.5fr 1fr 1.5fr auto; gap: 12px; align-items: center; background: transparent; padding: 0 0 12px 0; border-radius: 0; margin-bottom: 12px; border: none; border-bottom: 1px solid var(--border); }
+            .item-row > div { display: block; }
+            .item-row label.md-hidden { display: none; }
+            .item-row input { width: 100%; text-align: left; }
+        }
+        
+        /* Summary Footer */
+        .summary { background: var(--surface-hover); border-top: 1px solid var(--border); padding: 20px; }
+        .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .summary-row.total { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 16px; }
+
+        /* Sync Status */
+        #sync-status { font-size: 0.75rem; color: var(--primary); display: none; align-items: center; gap: 4px; font-weight: 500; }
+
+        /* Sales & Expense Log Items */
+        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); transition: 0.2s; flex-wrap: wrap; gap: 12px; }
+        .log-item:hover { background: var(--surface-hover); }
+        .log-item-left { flex: 1; min-width: 150px; }
+        .log-item-right { display: flex; align-items: center; gap: 16px; }
+
+        .section { display: none; }
+        .section.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Utility */
+        .action-buttons { display: flex; gap: 12px; flex-direction: column; }
+        @media (min-width: 480px) { .action-buttons { flex-direction: row; flex-wrap: wrap; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+        <div>
+            <h1><i data-lucide="receipt"></i> Right Choice</h1>
+            <p class="text-sm" style="margin-top: 4px;">Dress Shop • Billing & Management</p>
+        </div>
+        <div style="text-align: right;">
+            <p class="text-sm font-medium" id="display-date">Date Loading...</p>
+            <div id="sync-status"><i data-lucide="cloud-sync" style="width: 14px; height: 14px;"></i> Syncing...</div>
+        </div>
+    </header>
+
+    <div class="grid-3" style="margin-bottom: 24px;">
+        <div class="stat-block">
+            <p class="text-sm mb-1">Today's Net Profit</p>
+            <h2 id="stat-today-net" style="color: var(--success-text);">₹0</h2>
+            <p class="text-xs mt-1" id="stat-today-desc">Sales: ₹0 | Exp: ₹0</p>
+        </div>
+        <div class="stat-block">
+            <p class="text-sm mb-1">This Month Net Profit</p>
+            <h2 id="stat-month-net" style="color: var(--success-text);">₹0</h2>
+            <p class="text-xs mt-1" id="stat-month-desc">Sales: ₹0 | Exp: ₹0</p>
+        </div>
+        <div class="stat-block">
+            <p class="text-sm mb-1">Total Gross Revenue</p>
+            <h2 id="stat-all-rev">₹0</h2>
+            <p class="text-xs mt-1">all time</p>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('new-bill')"><i data-lucide="file-text" style="width: 16px;"></i> New Bill</button>
+        <button class="tab-btn" onclick="switchTab('sales-log')"><i data-lucide="layout-dashboard" style="width: 16px;"></i> Sales Log</button>
+        <button class="tab-btn" onclick="switchTab('expenses')"><i data-lucide="calculator" style="width: 16px;"></i> Exp. & Returns</button>
+    </div>
+
+    <div id="new-bill" class="section active">
+        <div class="card">
+            <div class="card-body">
+                <h3><i data-lucide="user" style="width: 16px;"></i> Customer Details</h3>
+                <div class="grid-2">
+                    <div><label>Customer Name</label><input type="text" id="cust-name" placeholder="e.g. Fathima"></div>
+                    <div><label>WhatsApp Number</label><input type="tel" id="cust-phone" placeholder="e.g. 9876543210"></div>
+                    <div><label>Bill Number</label><input type="text" id="bill-no" readonly value="RC-0001"></div>
+                    <div><label>Payment Mode</label>
+                        <select id="pay-mode"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body" style="padding-bottom: 0;">
+                <h3><i data-lucide="shopping-bag" style="width: 16px;"></i> Items</h3>
+                <div class="items-header">
+                    <div class="text-xs font-medium">Item Name</div>
+                    <div class="text-xs font-medium">Actual Price (₹)</div>
+                    <div class="text-xs font-medium">Discount (₹)</div>
+                    <div class="text-xs font-medium">Selling Price (₹)</div>
+                    <div class="text-xs font-medium">Qty</div>
+                    <div class="text-xs font-medium text-right" style="padding-right: 30px;">Total</div>
+                </div>
+                <div id="items-container"></div>
+                <button class="btn btn-full" style="margin: 16px 0 24px 0; border-style: dashed;" onclick="addItem()"><i data-lucide="plus" style="width: 16px;"></i> Add New Item</button>
+            </div>
+            
+            <div class="summary">
+                <div class="summary-row"><span class="text-sm">Subtotal (Actual Value)</span><span class="font-medium" id="subtotal">₹0</span></div>
+                <div class="summary-row"><span class="text-sm">Total Savings (Discount)</span><span class="font-medium" style="color: var(--success-text);" id="total-discount">-₹0</span></div>
+                <div class="summary-row total"><span style="font-weight: 600; font-size: 1.1rem;">Grand Total</span><span style="font-weight: 700; font-size: 1.5rem; color: var(--primary);" id="grand-total">₹0</span></div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="processBill('whatsapp')" style="flex: 1;"><i data-lucide="message-square" style="width: 16px;"></i> Save & WhatsApp</button>
+            <button class="btn" onclick="processBill('save')" style="flex: 1;"><i data-lucide="save" style="width: 16px;"></i> Save Bill Only</button>
+            <button class="btn" onclick="clearForm()"><i data-lucide="rotate-ccw" style="width: 16px;"></i> Clear</button>
+        </div>
+    </div>
+
+    <div id="sales-log" class="section">
+        <div class="card" style="border-radius: 12px; overflow: hidden;">
+            <div style="padding: 16px 20px; background: var(--surface-hover); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0;">Sales Database</h3>
+                <div style="display: flex; gap: 8px;">
+                    <input type="date" id="log-date-filter" style="width: auto;" onchange="renderSalesLog()">
+                    <button class="btn btn-primary" style="padding: 8px 12px;" onclick="exportCSV()"><i data-lucide="download" style="width: 16px;"></i> Export</button>
+                </div>
+            </div>
+            <div id="sales-list"></div>
+        </div>
+    </div>
+
+    <div id="expenses" class="section">
+        <div class="card">
+            <div class="card-body">
+                <h3><i data-lucide="calculator" style="width: 16px;"></i> Log Expense or Item Return</h3>
+                <p class="text-sm" style="margin-bottom: 16px;">Any amount saved here will be deducted from your Net Profit automatically.</p>
+                <div class="grid-2">
+                    <div><label>Date</label><input type="date" id="exp-date"></div>
+                    <div><label>Category</label>
+                        <select id="exp-category">
+                            <option>Customer Return (Refund)</option><option>Staff Salary</option>
+                            <option>Shop Rent</option><option>Electricity / Bills</option>
+                            <option>Tea / Snacks / Misc</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid-2" style="margin-top: 12px;">
+                    <div><label>Details / Customer Name</label><input type="text" id="exp-desc" placeholder="Details..."></div>
+                    <div><label>Amount (₹)</label><input type="number" id="exp-amount" min="1" placeholder="Amount to deduct"></div>
+                </div>
+                <button class="btn btn-full" style="margin-top: 16px; background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-bg);" onclick="saveExpense()">
+                    <i data-lucide="minus-circle" style="width: 16px;"></i> Deduct Amount
+                </button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div style="padding: 16px 20px; background: var(--surface-hover); border-bottom: 1px solid var(--border);">
+                <h3 style="margin: 0;">Recent Expenses & Returns</h3>
+            </div>
+            <div id="expenses-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Initialize Icons & Date ---
+    lucide.createIcons();
+    const dateOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+    document.getElementById('display-date').innerText = new Date().toLocaleDateString('en-GB', dateOptions);
+
+    // --- Supabase Config & Local Backup ---
+    const SUPABASE_URL = 'https://xoefwyhwngnwgfoxpkpz.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvZWZ3eWh3bmdud2dmb3hwa3B6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNTE0NDEsImV4cCI6MjA5NTYyNzQ0MX0.Aa3qhIjmCyRUwRPFNd7sZ1Deycu13zCPX7vQc3YHqt8';
+    
+    let supabaseClient = null;
+    
+    // Load offline backup
+    let localSavedBills = JSON.parse(localStorage.getItem('rightchoice_bills')) || [];
+    let localSavedExpenses = JSON.parse(localStorage.getItem('rightchoice_expenses')) || [];
+    let appData = { bills: localSavedBills, expenses: localSavedExpenses, nextBillNo: 1 };
+    
+    try { if(window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e) {}
+
+    // --- Formatting Helpers ---
+    const formatINR = (amt) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amt || 0);
+    const getTodayStr = () => new Date().toISOString().split('T')[0];
+    const getMonthStr = () => new Date().toISOString().slice(0, 7);
+
+    // --- UI Logic ---
+    function switchTab(tabId) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+        
+        if (tabId === 'sales-log') renderSalesLog();
+        if (tabId === 'expenses') renderExpenses();
+        fetchData(); 
+    }
+
+    function showSync(show) { document.getElementById('sync-status').style.display = show ? 'flex' : 'none'; }
+
+    // --- Data Fetching ---
+    async function fetchData() {
+        if(!supabaseClient) {
+            calculateNextBillNo(); updateDashboard(); return;
+        }
+        showSync(true);
+        try {
+            const { data, error } = await supabaseClient.from('shop_data').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            
+            appData.bills = data.filter(d => d.data_type === 'bill').map(row => row.payload);
+            appData.expenses = data.filter(d => d.data_type === 'expense').map(row => row.payload);
+            
+            localStorage.setItem('rightchoice_bills', JSON.stringify(appData.bills));
+            localStorage.setItem('rightchoice_expenses', JSON.stringify(appData.expenses));
+            
+            calculateNextBillNo(); updateDashboard();
+        } catch(e) { console.error(e); }
+        finally { showSync(false); }
+    }
+
+    function calculateNextBillNo() {
+        if(appData.bills.length > 0) {
+            const maxNum = Math.max(...appData.bills.map(b => {
+                const parts = b.id.split('-');
+                return parts.length > 1 ? parseInt(parts[1]) : 0;
+            }));
+            appData.nextBillNo = maxNum + 1;
+        } else { appData.nextBillNo = 1; }
+        document.getElementById('bill-no').value = `RC-${String(appData.nextBillNo).padStart(4, '0')}`;
+    }
+
+    // --- Dashboard Stats ---
+    function updateDashboard() {
+        const tStr = getTodayStr(), mStr = getMonthStr();
+        
+        const tRev = appData.bills.filter(b => b.date === tStr).reduce((s, b) => s + b.grandTotal, 0);
+        const tExp = appData.expenses.filter(e => e.date === tStr).reduce((s, e) => s + e.amount, 0);
+        const mRev = appData.bills.filter(b => b.date.startsWith(mStr)).reduce((s, b) => s + b.grandTotal, 0);
+        const mExp = appData.expenses.filter(e => e.date.startsWith(mStr)).reduce((s, e) => s + e.amount, 0);
+        const allRev = appData.bills.reduce((s, b) => s + b.grandTotal, 0);
+        
+        document.getElementById('stat-today-net').innerText = formatINR(tRev - tExp);
+        document.getElementById('stat-today-desc').innerText = `Sales: ${formatINR(tRev)} | Exp: ${formatINR(tExp)}`;
+        document.getElementById('stat-month-net').innerText = formatINR(mRev - mExp);
+        document.getElementById('stat-month-desc').innerText = `Sales: ${formatINR(mRev)} | Exp: ${formatINR(mExp)}`;
+        document.getElementById('stat-all-rev').innerText = formatINR(allRev);
+    }
+
+    // --- Billing Logic ---
+    let items = [{ id: Date.now(), name: '', mrp: '', price: '', qty: 1, discount: '' }];
+
+    function renderItems() {
+        const container = document.getElementById('items-container');
+        container.innerHTML = '';
+        items.forEach((item, index) => {
+            const rowTotal = (parseFloat(item.price)||0) * (parseInt(item.qty)||1);
+            const div = document.createElement('div');
+            div.className = 'item-row';
+            div.innerHTML = `
+                <div><label class="md-hidden">Item Name</label><input type="text" placeholder="Item name" value="${item.name}" oninput="updateItem(${item.id}, 'name', this.value)"></div>
+                <div><label class="md-hidden">Actual Price (₹)</label><input type="number" placeholder="0" value="${item.mrp}" oninput="updateItem(${item.id}, 'mrp', this.value)"></div>
+                <div><label class="md-hidden">Discount (₹)</label><input type="number" placeholder="0" value="${item.discount}" oninput="updateItem(${item.id}, 'discount', this.value)"></div>
+                <div><label class="md-hidden">Selling Price (₹)</label><input type="number" readonly value="${item.price}" placeholder="Auto"></div>
+                <div><label class="md-hidden">Qty</label><input type="number" min="1" value="${item.qty}" oninput="updateItem(${item.id}, 'qty', this.value)"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1px dashed var(--border); margin-top: 4px;" class="md-only-border">
+                    <span style="font-weight: 600; font-size: 1rem; color: var(--primary);">${formatINR(rowTotal)}</span>
+                    <button class="btn-icon" onclick="removeItem(${item.id})"><i data-lucide="trash-2" style="width: 18px;"></i></button>
+                </div>
+            `;
+            if(window.innerWidth > 767) {
+                div.querySelector('.md-only-border').style.borderTop = 'none';
+                div.querySelector('.md-only-border').style.marginTop = '0';
+                div.querySelector('.md-only-border').style.paddingTop = '0';
+            }
+            container.appendChild(div);
+        });
+        lucide.createIcons(); calculateTotals();
+    }
+
+    function addItem() { items.push({ id: Date.now(), name: '', mrp: '', price: '', qty: 1, discount: '' }); renderItems(); }
+    function removeItem(id) { if(items.length > 1) { items = items.filter(i => i.id !== id); renderItems(); } }
+
+    function updateItem(id, field, value) {
+        const item = items.find(i => i.id === id);
+        if(item) {
+            item[field] = value;
+            
+            // Auto-calculate the Selling Price: Actual (mrp) - Discount
+            if (field === 'mrp' || field === 'discount') {
+                const mVal = parseFloat(item.mrp) || 0;
+                const dVal = parseFloat(item.discount) || 0;
+                // Prevent negative selling price
+                item.price = (mVal - dVal > 0) ? (mVal - dVal) : 0; 
+            }
+
+            calculateTotals();
+            
+            // Fast DOM update for the active row
+            const rowTotal = (parseFloat(item.price)||0) * (parseInt(item.qty)||1);
+            const rowDivs = document.getElementById('items-container').children;
+            const index = items.findIndex(i => i.id === id);
+            
+            if(rowDivs[index]) { 
+                const inputs = rowDivs[index].querySelectorAll('input');
+                // Input index: 0=Name, 1=MRP, 2=Discount, 3=Selling Price, 4=Qty
+                if(inputs[3]) inputs[3].value = item.price || '';
+                
+                const totalSpan = rowDivs[index].querySelector('span'); 
+                if(totalSpan) totalSpan.innerText = formatINR(rowTotal); 
+            }
+        }
+    }
+
+    function calculateTotals() {
+        let sub = 0, disc = 0;
+        items.forEach(i => { 
+            // Subtotal is based on the Actual Price (MRP)
+            sub += ((parseFloat(i.mrp)||0) * (parseInt(i.qty)||1)); 
+            // Total Discount is based on User Discount
+            disc += ((parseFloat(i.discount)||0) * (parseInt(i.qty)||1)); 
+        });
+        document.getElementById('subtotal').innerText = formatINR(sub);
+        document.getElementById('total-discount').innerText = `-${formatINR(disc)}`;
+        document.getElementById('grand-total').innerText = formatINR(sub - disc);
+    }
+
+    function clearForm() {
+        document.getElementById('cust-name').value = ''; document.getElementById('cust-phone').value = ''; document.getElementById('pay-mode').value = 'Cash';
+        items = [{ id: Date.now(), name: '', mrp: '', price: '', qty: 1, discount: '' }];
+        renderItems(); calculateNextBillNo();
+    }
+
+    async function processBill(action) {
+        const name = document.getElementById('cust-name').value;
+        if(!name) return alert("Please enter Customer Name");
+
+        // Filter valid items where an Actual Price (mrp) is provided
+        const validItems = items.filter(i => i.name && i.mrp > 0).map(i => {
+            const m = parseFloat(i.mrp)||0;
+            const d = parseFloat(i.discount)||0;
+            const p = (m - d > 0) ? (m - d) : 0; // Selling price
+            const q = parseInt(i.qty)||1;
+            return {
+                name: i.name, mrp: m, price: p, qty: q, discount: d, total: p * q
+            };
+        });
+
+        if(validItems.length === 0) return alert("Add at least one valid item with an Actual Price");
+        
+        let sub = 0, disc = 0; 
+        validItems.forEach(i => { 
+            sub += (i.mrp * i.qty); 
+            disc += (i.discount * i.qty); 
+        });
+
+        const newBill = {
+            id: document.getElementById('bill-no').value, timestamp: Date.now(), date: getTodayStr(), customer: name,
+            phone: document.getElementById('cust-phone').value, mode: document.getElementById('pay-mode').value,
+            items: validItems, subtotal: sub, discount: disc, grandTotal: sub - disc
+        };
+
+        appData.bills.unshift(newBill);
+        localStorage.setItem('rightchoice_bills', JSON.stringify(appData.bills));
+        updateDashboard(); 
+
+        if(supabaseClient) {
+            showSync(true);
+            try { await supabaseClient.from('shop_data').insert([{ data_type: 'bill', payload: newBill }]); } catch(e) {} finally { showSync(false); }
+        }
+
+        if (action === 'whatsapp') {
+            if(!newBill.phone || newBill.phone.length < 10) alert("Please enter a valid 10-digit WhatsApp number.");
+            else {
+                let msg = `*Right Choice* 🛍️\n--------------------------\n*Bill No:* ${newBill.id}\n*Date:* ${newBill.date}\n*Customer:* ${newBill.customer}\n\n*Your Items:*\n`;
+                newBill.items.forEach(i => {
+                    msg += `👗 ${i.name} (${i.qty}) = ${formatINR(i.total)}\n`;
+                    if(i.discount > 0) msg += `   ~MRP: ${formatINR(i.mrp)} each~\n`; 
+                });
+                if (newBill.discount > 0) msg += `\nSubtotal: ${formatINR(newBill.subtotal)}\nTotal Savings: -${formatINR(newBill.discount)}\n`;
+                msg += `*Grand Total: ${formatINR(newBill.grandTotal)}*\n--------------------------\nThank you, visit again! \nHappy shopping with us! 🙏`;
+                window.open(`https://wa.me/91${newBill.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+            }
+        }
+        clearForm();
+    }
+
+    // --- Deletion Functions ---
+    async function deleteBill(billId) {
+        if(!confirm(`Are you sure you want to delete bill ${billId}? This action cannot be undone.`)) return;
+        
+        appData.bills = appData.bills.filter(b => b.id !== billId);
+        localStorage.setItem('rightchoice_bills', JSON.stringify(appData.bills));
+        
+        if(supabaseClient) {
+            showSync(true);
+            try { await supabaseClient.from('shop_data').delete().contains('payload', { id: billId }); } catch(e) { console.error(e); } finally { showSync(false); }
+        }
+        
+        updateDashboard(); renderSalesLog(); calculateNextBillNo();
+    }
+
+    async function deleteExpense(expId) {
+        if(!confirm("Are you sure you want to delete this expense/return log?")) return;
+        
+        appData.expenses = appData.expenses.filter(e => e.id !== expId);
+        localStorage.setItem('rightchoice_expenses', JSON.stringify(appData.expenses));
+        
+        if(supabaseClient) {
+            showSync(true);
+            try { await supabaseClient.from('shop_data').delete().contains('payload', { id: expId }); } catch(e) { console.error(e); } finally { showSync(false); }
+        }
+        
+        updateDashboard(); renderExpenses();
+    }
+
+    // --- Sales Log & CSV Export ---
+    function renderSalesLog() {
+        const container = document.getElementById('sales-list');
+        const filterDate = document.getElementById('log-date-filter').value;
+        container.innerHTML = '';
+        
+        let displayBills = appData.bills;
+        if(filterDate) displayBills = displayBills.filter(b => b.date === filterDate);
+        
+        if(displayBills.length === 0) {
+            container.innerHTML = `<p style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">No bills found for this date.</p>`; return;
+        }
+
+        displayBills.forEach(bill => {
+            container.innerHTML += `
+                <div class="log-item">
+                    <div class="log-item-left">
+                        <p style="font-weight: 500; font-size: 0.875rem;">${bill.id} <span style="color: var(--border); margin: 0 8px;">|</span> ${bill.customer}</p>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">${bill.date} • ${bill.mode} • ${bill.items.length} items</p>
+                    </div>
+                    <div class="log-item-right">
+                        <p style="font-weight: 600; font-size: 1.1rem;">${formatINR(bill.grandTotal)}</p>
+                        <button class="btn-icon" style="color: var(--danger-text);" onclick="deleteBill('${bill.id}')" title="Delete Bill">
+                            <i data-lucide="trash-2" style="width: 18px;"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        lucide.createIcons();
+    }
+
+    function exportCSV() {
+        const filterDate = document.getElementById('log-date-filter').value;
+        let exportBills = appData.bills;
+        if(filterDate) exportBills = exportBills.filter(b => b.date === filterDate);
+        
+        if(exportBills.length === 0) return alert("No data to export for this date.");
+
+        let csv = "Bill Number,Date,Customer,Phone,Mode,Items Count,Subtotal,Discount,Grand Total\n";
+        exportBills.forEach(b => {
+            csv += `${b.id},${b.date},${b.customer},${b.phone},${b.mode},${b.items.length},${b.subtotal},${b.discount},${b.grandTotal}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `RightChoice_Sales_${filterDate || 'All_Time'}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // --- Expenses Logic ---
+    async function saveExpense() {
+        const amt = parseFloat(document.getElementById('exp-amount').value);
+        if(!amt || amt <= 0) return alert("Please enter a valid amount to deduct.");
+
+        const exp = {
+            id: Date.now(),
+            date: document.getElementById('exp-date').value || getTodayStr(),
+            category: document.getElementById('exp-category').value,
+            desc: document.getElementById('exp-desc').value || "N/A",
+            amount: amt
+        };
+
+        appData.expenses.unshift(exp);
+        localStorage.setItem('rightchoice_expenses', JSON.stringify(appData.expenses));
+        updateDashboard(); renderExpenses();
+
+        if(supabaseClient) {
+            showSync(true);
+            try { await supabaseClient.from('shop_data').insert([{ data_type: 'expense', payload: exp }]); } catch(e) {} finally { showSync(false); }
+        }
+
+        document.getElementById('exp-amount').value = ''; document.getElementById('exp-desc').value = '';
+    }
+
+    function renderExpenses() {
+        const container = document.getElementById('expenses-list');
+        container.innerHTML = '';
+        if(appData.expenses.length === 0) {
+            container.innerHTML = `<p style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">No deductions recorded yet.</p>`; return;
+        }
+
+        appData.expenses.slice(0, 30).forEach(e => {
+            container.innerHTML += `
+                <div class="log-item">
+                    <div class="log-item-left">
+                        <p style="font-weight: 500; font-size: 0.875rem;">${e.category}</p>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">${e.date} • ${e.desc}</p>
+                    </div>
+                    <div class="log-item-right">
+                        <p style="font-weight: 600; color: var(--danger-text);">- ${formatINR(e.amount)}</p>
+                        <button class="btn-icon" style="color: var(--text-muted);" onclick="deleteExpense(${e.id})" title="Delete Log">
+                            <i data-lucide="trash-2" style="width: 18px;"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        lucide.createIcons();
+    }
+
+    // Init
+    window.onload = () => {
+        document.getElementById('log-date-filter').value = getTodayStr();
+        document.getElementById('exp-date').value = getTodayStr();
+        renderItems(); calculateNextBillNo(); fetchData();
+    };
+    window.addEventListener('resize', renderItems);
+</script>
+</body>
+</html>
